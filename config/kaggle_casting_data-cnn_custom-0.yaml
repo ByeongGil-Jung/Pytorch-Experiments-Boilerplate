@@ -1,0 +1,21 @@
+metadata:
+  representation: "kaggle_casting_data-cnn_custom"
+  dataset_name: "kaggle_casting_data"
+  model_name: "cnn_custom"
+  version: 0
+  env: "script"  # script | notebook
+
+dataset:
+  hparmas:
+    key: value
+
+model:
+  hparams:
+    key: value
+
+trainer:
+  device: "cuda:6"
+  is_saved: true
+
+  training_hparams:
+    key: value

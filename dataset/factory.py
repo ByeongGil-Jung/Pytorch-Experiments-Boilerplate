@@ -4,13 +4,20 @@ from torch.utils.data import DataLoader
 from torchvision import transforms
 
 from dataset.kaggle_casting_dataset import KaggleCastingDataset
+from domain.base import Module
+from domain.metadata import Metadata
 from logger import logger
 from properties import APPLICATION_PROPERTIES
 
 
-class DatasetFactory(object):
+class DatasetModule(Module):
 
-    def __init__(self):
+    def __init__(self, metadata: Metadata, *args, **kwargs):
+        super(DatasetModule, self).__init__(*args, **kwargs)
+        self.metadata = metadata
+
+        self.name = self.metadata.dataset_name
+
         self.train_dataset = None
         self.val_dataset = None
         self.test_dataset = None
@@ -19,10 +26,10 @@ class DatasetFactory(object):
         self.val_dataloader = None
         self.test_dataloader = None
 
-    @classmethod
-    def create(cls, data_name):
-        dataset_factory = cls()
+        # Create
+        self.create()
 
+    def create(self):
         train_dataset = None
         val_dataset = None
         test_dataset = None
@@ -30,6 +37,8 @@ class DatasetFactory(object):
         train_dataloader = None
         val_dataloader = None
         test_dataloader = None
+
+        data_name = self.name
 
         if data_name == "kaggle_casting_data":
             train_dataset = KaggleCastingDataset(
@@ -61,13 +70,14 @@ class DatasetFactory(object):
             pass
 
         # Set
-        dataset_factory.train_dataset = train_dataset
-        dataset_factory.val_dataset = val_dataset
-        dataset_factory.test_dataset = test_dataset
+        self.train_dataset = train_dataset
+        self.val_dataset = val_dataset if val_dataset else test_dataset
+        self.test_dataset = test_dataset
 
-        dataset_factory.train_dataloader = train_dataloader
-        dataset_factory.val_dataloader = val_dataloader
-        dataset_factory.test_dataloader = test_dataloader
+        self.train_dataloader = train_dataloader
+        self.val_dataloader = val_dataloader if val_dataloader else test_dataloader
+        self.test_dataloader = test_dataloader
 
         logger.info(f"Data selected : '{data_name}'")
-        return dataset_factory
+
+        return self

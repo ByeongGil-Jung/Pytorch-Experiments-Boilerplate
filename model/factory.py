@@ -1,16 +1,24 @@
 from logger import logger
+
+from domain.base import Module
+from domain.metadata import Metadata
 from model.cnn_custom import CNNCustom
 
 
-class ModelFactory(object):
+class ModelModule(Module):
 
-    def __init__(self):
+    def __init__(self, metadata: Metadata, *args, **kwargs):
+        super(ModelModule, self).__init__(*args, **kwargs)
+        self.metadata = metadata
+        self.name = self.metadata.model_name
+
         self.model = None
 
-    @classmethod
-    def create(cls, model_name):
-        model_factory = cls()
+        # Create
+        self.create()
 
+    def create(self):
+        model_name = self.name
         model = None
 
         if model_name == "cnn_custom":
@@ -19,7 +27,8 @@ class ModelFactory(object):
             pass
 
         # Set
-        model_factory.model = model
+        self.model = model
 
-        logger.info(f"Model selected : '{model_name}'")
-        return model_factory
+        logger.info(f"Model selected :\n'{model}'")
+
+        return self

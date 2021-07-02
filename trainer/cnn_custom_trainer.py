@@ -1,10 +1,13 @@
-from copy import deepcopy
 import pickle
 import time
+from copy import deepcopy
 
 import torch
-
 from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score
+
+from dataset.factory import DatasetModule
+from domain.metadata import Metadata
+from model.factory import ModelModule
 from trainer.base import TrainerBase
 
 time.time()
@@ -12,21 +15,20 @@ time.time()
 
 class CNNCustomTrainer(TrainerBase):
 
-    def __init__(self, model, model_file_metadata, train_loader, val_loader, test_loader, hyperparameters, tqdm_env='script'):
-        super(CNNCustomTrainer, self).__init__(model, model_file_metadata, train_loader, val_loader, test_loader, hyperparameters, tqdm_env)
+    def __init__(self, metadata: Metadata, model_module: ModelModule, dataset_module: DatasetModule, hparams, *args, **kwargs):
+        super(CNNCustomTrainer, self).__init__(metadata, model_module, dataset_module, hparams, *args, **kwargs)
 
-    # def train(self, optimizer_cls, criterion, n_epoch, lr, hypothesis_threshold, weight_decay):
     def train(self):
         self.model.train()
 
         # Set hyperparameters
-        optimizer_cls = self.hyperparameters.optimizer_cls
-        lr = self.hyperparameters.lr
-        weight_decay = self.hyperparameters.weight_decay
-        n_epoch = self.hyperparameters.n_epoch
-        criterion = self.hyperparameters.criterion
-        hypothesis_threshold = self.hyperparameters.hypothesis_threshold
-        device = self.hyperparameters.device
+        optimizer_cls = self.hparams.optimizer_cls
+        lr = self.hparams.lr
+        weight_decay = self.hparams.weight_decay
+        n_epoch = self.hparams.n_epoch
+        criterion = self.hparams.criterion
+        hypothesis_threshold = self.hparams.hypothesis_threshold
+        device = self.device
 
         optimizer = optimizer_cls(self.model.parameters(), lr=lr, weight_decay=weight_decay)
 
@@ -45,9 +47,9 @@ class CNNCustomTrainer(TrainerBase):
             label_list = list()
             pred_list = list()
 
-            for i, (img_batch, label_batch) in enumerate(self.train_loader):
+            for i, (img_batch, label_batch) in enumerate(self.train_dataloader):
                 img_batch = img_batch.to(device)
-                label_batch = label_batch.to(device).float()
+                label_batch = label_batch.to(device).float().unsqueeze(dim=1)
 
                 # Optimization
                 optimizer.zero_grad()
@@ -103,9 +105,9 @@ class CNNCustomTrainer(TrainerBase):
                 val_result_dict=val_result_dict
             )
 
-            torch.save(self.model.state_dict(), self.model_file_metadata.get_save_model_file_path(epoch=epoch))
+            torch.save(self.model.state_dict(), self.metadata.get_save_model_file_path(epoch=epoch))
 
-            with open(self.model_file_metadata.get_save_record_file_path(epoch=epoch), "wb") as f:
+            with open(self.metadata.get_save_record_file_path(epoch=epoch), "wb") as f:
                 pickle.dump(record_dict, f, protocol=pickle.HIGHEST_PROTOCOL)
 
             train_result_dict_list.append(train_result_dict)
@@ -116,10 +118,10 @@ class CNNCustomTrainer(TrainerBase):
             train_result_dict_list=train_result_dict_list,
             val_result_dict_list=val_result_dict_list
         )
-        torch.save(self.best_model_state_dict, self.model_file_metadata.get_best_model_file_path())
+        torch.save(self.best_model_state_dict, self.metadata.get_best_model_file_path())
 
         # Save entire_record_dict
-        with open(self.model_file_metadata.get_entire_record_file_path(), "wb") as f:
+        with open(self.metadata.get_entire_record_file_path(), "wb") as f:
             pickle.dump(entire_record_dict, f, protocol=pickle.HIGHEST_PROTOCOL)
 
         # Load best model
@@ -131,9 +133,9 @@ class CNNCustomTrainer(TrainerBase):
         self.model.eval()
 
         # Set hyperparameters
-        criterion = self.hyperparameters.criterion
-        hypothesis_threshold = self.hyperparameters.hypothesis_threshold
-        device = self.hyperparameters.device
+        criterion = self.hparams.criterion
+        hypothesis_threshold = self.hparams.hypothesis_threshold
+        device = self.device
 
         total_loss = 0
         n_batch = 0
@@ -141,9 +143,9 @@ class CNNCustomTrainer(TrainerBase):
         label_list = list()
         pred_list = list()
 
-        for i, (img_batch, label_batch) in enumerate(self.val_loader):
+        for i, (img_batch, label_batch) in enumerate(self.val_dataloader):
             img_batch = img_batch.to(device)
-            label_batch = label_batch.to(device).float()
+            label_batch = label_batch.to(device).float().unsqueeze(dim=1)
 
             with torch.no_grad():
                 hypothesis = self.model(img_batch)

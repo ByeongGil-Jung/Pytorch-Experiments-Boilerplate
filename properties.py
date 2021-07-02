@@ -42,15 +42,17 @@ class Configuration(object):
 class ApplicationProperties:
     CURRENT_MODULE_PATH = pathlib.Path(__file__).parent.absolute()
 
+    CONFIG_DIRECTORY_PATH = os.path.join(CURRENT_MODULE_PATH, "config")
     DATA_DIRECTORY_PATH = os.path.join(CURRENT_MODULE_PATH, "data")
-    DATASET_DIRECTORY_PATH = os.path.join(CURRENT_MODULE_PATH, "data")
+    DATASET_DIRECTORY_PATH = os.path.join(CURRENT_MODULE_PATH, "dataset")
     MODEL_DIRECTORY_PATH = os.path.join(CURRENT_MODULE_PATH, "model")
-    PREDICT_DIRECTORY_PATH = os.path.join(CURRENT_MODULE_PATH, "predict")
-    TRAIN_DIRECTORY_PATH = os.path.join(CURRENT_MODULE_PATH, "trainer")
+    INFERENCE_DIRECTORY_PATH = os.path.join(CURRENT_MODULE_PATH, "inference")
+    TRAINER_DIRECTORY_PATH = os.path.join(CURRENT_MODULE_PATH, "trainer")
 
     DEFAULT_RANDOM_SEED = 777
 
     DEVICE_CPU = "cpu"
+    DEVICE_GPU = "cuda"
 
     def __post_init__(self):
         Configuration.apply(random_seed=self.DEFAULT_RANDOM_SEED)

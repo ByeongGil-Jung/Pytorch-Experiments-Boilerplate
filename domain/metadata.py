@@ -1,22 +1,21 @@
 import os
 
-from domain.base import Domain
+from domain.base import Module
 from properties import APPLICATION_PROPERTIES
 
 
-class Metadata(Domain):
+class Metadata(Module):
 
-    def __init__(self):
-        super(Domain, self).__init__()
+    def __init__(self, *args, **kwargs):
+        super(Metadata, self).__init__(*args, **kwargs)
+        self.name = self.arg.representation
+        self.model_name = self.arg.model_name
+        self.dataset_name = self.arg.dataset_name
+        self.version = self.arg.version
 
-
-class ModelFileMetadata(Metadata):
-
-    def __init__(self, model_name):
-        super(ModelFileMetadata, self).__init__()
-        self.model_name = model_name
         self.model_home_dir_path = os.path.join(APPLICATION_PROPERTIES.MODEL_DIRECTORY_PATH, "models")
-        self.model_dir_path = os.path.join(self.model_home_dir_path, self.model_name)
+        self.model_dir_name = f"{self.name}_{self.version}"
+        self.model_dir_path = os.path.join(self.model_home_dir_path, self.model_dir_name)
 
         self.model_ext = ".pt"
         self.record_ext = ".pkl"

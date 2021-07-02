@@ -1,49 +1,52 @@
 import argparse
 
-from dataset.factory import DatasetFactory
+from config.config import Config
+from dataset.factory import DatasetModule
+from domain.metadata import Metadata
 from logger import logger
-from model.factory import ModelFactory
-from trainer.factory import TrainerFactory
+from model.factory import ModelModule
+from trainer.factory import TrainerModule
 
 
 def main(args):
-    model_name = args.model
-    data_name = args.data
-    mode = args.mode
-    tqdm_env = args.tqdm_env
+    mode = args.mode.lower()
+    config_file_name = args.config.lower()
+
+    # Get Parameters
+    params = Config(file_name=config_file_name).params
+    logger.info(f"Parameter information :\n{params}")
+
+    metadata_params = params.metadata
+    dataset_params = params.dataset
+    model_params = params.model
+    trainer_params = params.trainer
+
+    # Metadata Controller
+    metadata = Metadata(**metadata_params)
 
     # Dataset Controller
-    dataset_factory = DatasetFactory.create(data_name=data_name)
-    train_dataset, val_dataset, test_dataset \
-        = dataset_factory.train_dataset, dataset_factory.val_dataset, dataset_factory.test_dataset
-    train_dataloader, val_dataloader, test_dataloader \
-        = dataset_factory.train_dataloader, dataset_factory.val_dataloader, dataset_factory.test_dataloader
+    dataset_module = DatasetModule(metadata=metadata, **dataset_params)
 
     # Model Controller
-    model_factory = ModelFactory.create(model_name=model_name)
-    model = model_factory.model
+    model_module = ModelModule(metadata=metadata, **model_params)
 
     # Trainer Controller
-    trainer_factory = TrainerFactory.create(
-        model_name=model_name,
-        model=model,
-        train_dataloader=train_dataloader,
-        val_dataloader=val_dataloader,
-        test_dataloader=test_dataloader,
-        tqdm_env=tqdm_env
+    trainer_module = TrainerModule(
+        metadata=metadata,
+        model_module=model_module,
+        dataset_module=dataset_module,
+        **trainer_params
     )
 
-    result_dict = trainer_factory.do(mode=mode)
+    result_dict = trainer_module.do(mode=mode)
 
     print(result_dict)
 
 
 if __name__ == '__main__':
-    parser = argparse.ArgumentParser(description="Experiments Module (AIR Lab, Korea Univ)")
-    parser.add_argument("--model", required=False, default="cnn_custom", help="Model name")
-    parser.add_argument("--data", required=False, default="kaggle_casting_data", help="Dataset name")
-    parser.add_argument("--mode", required=False, default="train", help="Select the mode, train | predict")
-    parser.add_argument("--tqdm_env", required=False, default="script", help="Select the tqdm environment, script | jupyter")
+    parser = argparse.ArgumentParser(description="Pytorch Project Template [Byeonggil Jung (Korea Univ, AIR Lab)]")
+    parser.add_argument("--mode", required=False, default="train", help="Select the mode, train | inference")
+    parser.add_argument("--config", required=True, help="Select the config file")
     args = parser.parse_args()
 
     logger.info(f"Selected parameters : {args}")

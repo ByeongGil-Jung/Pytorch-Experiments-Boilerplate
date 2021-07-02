@@ -5,7 +5,10 @@ import time
 
 import torch
 
-from domain.metadata import ModelFileMetadata
+from dataset.factory import DatasetModule
+from domain.base import Module
+from domain.metadata import Metadata
+from model.factory import ModelModule
 from properties import APPLICATION_PROPERTIES
 from logger import logger
 from utils import Utils
@@ -13,30 +16,39 @@ from utils import Utils
 time.time()
 
 
-class TrainerBase(object):
+class TrainerBase(Module):
 
-    def __init__(self, model, model_file_metadata: ModelFileMetadata, train_loader, val_loader, test_loader, hyperparameters, tqdm_env='script', _logger=logger, is_saved=True):
-        self.model = model
-        self.model_file_metadata = model_file_metadata
-        self.train_loader = train_loader
-        self.val_loader = val_loader if val_loader else test_loader
-        self.test_loader = test_loader
-        self.hyperparameters = hyperparameters
+    def __init__(self, metadata: Metadata, model_module: ModelModule, dataset_module: DatasetModule, hparams, _logger=logger, *args, **kwargs):
+        super(TrainerBase, self).__init__(*args, **kwargs)
+        self.metadata = metadata
+        self.name = f"{self.metadata.dataset_name}_{self.metadata.model_name}_trainer"
+        self.model_module = model_module
+        self.dataset_module = dataset_module
+        self.hparams = hparams
+
+        self.model = self.model_module.model
+
+        self.train_dataloader = self.dataset_module.train_dataloader
+        self.val_dataloader = self.dataset_module.val_dataloader
+        self.test_dataloader = self.dataset_module.test_dataloader
+
         self.logger = _logger
+        self.device = self.arg.device
 
         # Set environments
         self.tqdm = None
         self.is_plot_showed = False
         self.tqdm_disable = False
 
-        self.set_tqdm_env(tqdm_env=tqdm_env)
+        self.set_tqdm_env(tqdm_env=metadata.arg.env)
 
-        if is_saved:
+        # Save
+        if self.arg.is_saved:
             self.create_model_directory()
 
         # Set model configuration
-        self.model.to(self.hyperparameters.device)
-        logger.info(f"Model set to '{self.hyperparameters.device}'")
+        self.model.to(self.device)
+        logger.info(f"Model set to '{self.device}'")
 
         self.best_model_state_dict = dict()
 
@@ -48,22 +60,22 @@ class TrainerBase(object):
         self.tqdm_disable = tqdm_env_dict["is_plot_showed"]
 
     def create_model_directory(self):
-        Path(self.model_file_metadata.model_dir_path).mkdir(parents=True, exist_ok=True)
+        Path(self.metadata.model_dir_path).mkdir(parents=True, exist_ok=True)
 
     def load_best_model(self):
-        best_model_file_path = self.model_file_metadata.get_best_model_file_path()
+        best_model_file_path = self.metadata.get_best_model_file_path()
 
         if os.path.isfile(best_model_file_path):
             self.model.load_state_dict(torch.load(best_model_file_path, map_location=APPLICATION_PROPERTIES.DEVICE_CPU))
-            self.model.to(self.hyperparameters.device)
+            self.model.to(self.device)
 
-            logger.info(f"Succeed to load best model, device: '{self.hyperparameters.device}'")
+            logger.info(f"Succeed to load best model, device: '{self.device}'")
         else:
             logger.error(f"Failed to load best model, file not exist")
 
     def get_entire_record_file(self):
         entire_record_file = None
-        entire_record_file_path = self.model_file_metadata.get_entire_record_file_path()
+        entire_record_file_path = self.metadata.get_entire_record_file_path()
 
         if os.path.isfile(entire_record_file_path):
             with open(entire_record_file_path, "rb") as f:

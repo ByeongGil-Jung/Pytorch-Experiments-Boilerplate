@@ -2,42 +2,59 @@ from torch import optim
 from torch.nn import functional as F
 import torch
 
-from domain.hyperparameters import Hyperparameters
-from domain.metadata import ModelFileMetadata
+from dataset.factory import DatasetModule
+from domain.base import Module, Hyperparameters
+from domain.metadata import Metadata
+from model.factory import ModelModule
 from logger import logger
+from trainer.base import TrainerBase
 from trainer.cnn_custom_trainer import CNNCustomTrainer
 
 
-class TrainerFactory(object):
+class TrainerModule(Module):
 
-    def __init__(self, model_name):
-        self.model_name = model_name
-        self.trainer = None
+    def __init__(self, metadata: Metadata, model_module: ModelModule, dataset_module: DatasetModule, *args, **kwargs):
+        super(TrainerModule, self).__init__(*args, **kwargs)
+        self.metadata = metadata
+        self.model_module = model_module
+        self.dataset_module = dataset_module
 
-    @classmethod
-    def create(cls, model_name, model, train_dataloader, val_dataloader, test_dataloader, tqdm_env="script"):
-        trainer_factory = cls(model_name=model_name)
+        self.trainer: TrainerBase = None
+
+        # Create
+        self.create()
+
+    def create(self):
+        # trainer_factory = cls(model_name=model_name)
+        metadata = self.metadata
+        model_name = self.metadata.model_name
+        model_module = self.model_module
+        dataset_module = self.dataset_module
 
         trainer = None
 
         if model_name == "cnn_custom":
             trainer = CNNCustomTrainer(
-                model=model,
-                model_file_metadata=ModelFileMetadata(model_name=model_name),
-                train_loader=train_dataloader,
-                val_loader=val_dataloader,
-                test_loader=test_dataloader,
-                hyperparameters=cls.get_hyperparameters(model_name=model_name),
-                tqdm_env=tqdm_env
+                metadata=metadata,
+                model_module=model_module,
+                dataset_module=dataset_module,
+                hparams=TrainerModule.get_hyperparameters(model_name=model_name),
+                **self.arg
             )
         elif model_name == "model_1":
             pass
 
         # Set
-        trainer_factory.trainer = trainer
+        self.trainer = trainer
 
-        return trainer_factory
+        logger.info(f"Trainer selected : '{trainer}'")
 
+        return self
+
+    """
+    @TODO
+    Move & Modify this method
+    """
     @classmethod
     def get_hyperparameters(cls, model_name):
         hyperparameters = None
@@ -50,7 +67,7 @@ class TrainerFactory(object):
                 lr=1e-3,
                 hypothesis_threshold=0.5,
                 weight_decay=0,
-                device=torch.device("cuda" if torch.cuda.is_available() else "cpu")
+                # device=torch.device("cuda" if torch.cuda.is_available() else "cpu")
             )
         elif model_name == "model_1":
             pass
@@ -63,7 +80,7 @@ class TrainerFactory(object):
 
         if mode == "train":
             result_dict = self.trainer.train()
-        elif mode == "predict":
+        elif mode == "inference":
             result_dict = self.trainer.predict()
 
         logger.info(f"Completed to {mode}")
